@@ -1,8 +1,16 @@
-function ddos_mitigation()
+function ddos_mitigation(waf_mode)
+	local user_agent = ngx.req.get_headers()["user-agent"] 
+	if ngx.re.find(user_agent, "^PHP", "ioj") or ngx.re.find(user_agent, "^WordPress", "ioj") then
+		if waf_mode == "On" then
+			ngx.log(ngx.ALERT, "\nBlocked request with pingback ddos user-agent: ", user_agent)
+			ngx.exit(ngx.HTTP_FORBIDDEN)
+		else
+			ngx.log(ngx.ALERT, "\nDetected request with pingback ddos user-agent: ", user_agent)
+		end
+	end
+
 	local redis = require "resty.redis"
 	local red = redis:new()
-
-	red:set_timeout(1000) -- 1 sec
 
 	-- Connect to Redis
 	local ok, err = red:connect("127.0.0.1", 6379)
@@ -17,9 +25,11 @@ function ddos_mitigation()
 	-- Check if the IP is in the blacklist
 	local is_blacklisted, err = red:get("blacklist:" .. client_ip)
 	if is_blacklisted == "1" then
-		ngx.log(ngx.ALERT, "\nBlocked request from blacklisted ip: ", client_ip)
-		ngx.exit(ngx.HTTP_FORBIDDEN)
-		return
+		if waf_mode == "On" then
+			ngx.exit(ngx.HTTP_FORBIDDEN)
+		else
+			return
+		end
 	end
 
 	-- Increment the request count for this IP
@@ -35,57 +45,65 @@ function ddos_mitigation()
 	end
 
 	-- If the IP has made more than 100 requests in a minute, add it to the blacklist
-	if newval > 15 then
+	if newval > 100 then
+		ngx.log(ngx.ALERT, "\nIP ", client_ip, " is blacklisted") 
 		red:set("blacklist:" .. client_ip, 1)
-		red:expire("blacklist:" .. client_ip, 5) -- Expire after an hour
+		red:expire("blacklist:" .. client_ip, 3600) -- Expire after an hour
 	end
 
 end
 
-function get_detected_rules(detected)
+function check_method(allowed_methods, waf_mode)
+	local method_name = string.upper(ngx.req.get_method())
+	if not allowed_methods[method_name] then
+		if waf_mode == "On" then
+			ngx.log(ngx.ALERT, "Blocked request with unallowed method: ", method_name)
+			ngx.exit(ngx.HTTP_FORBIDDEN)
+		else
+			ngx.log(ngx.ALERT, "Detected request with unallowed method: ", method_name)
+		end
+	end
+
+end
+
+function reputation_analysis(torvpn_ip_list, waf_mode)
+	local client_ip = ngx.var.remote_addr
+	for _, torvpn_ip in pairs(torvpn_ip_list) do
+		if client_ip == torvpn_ip then
+			if waf_mode == "On" then
+				ngx.log(ngx.ALERT, "\nBlocked request from tor/vpn ip: ", client_ip)
+				ngx.exit(ngx.HTTP_FORBIDDEN)
+			else
+				ngx.log(ngx.ALERT, "\nDetected request from tor/vpn ip: ", client_ip)
+			end
+		end
+	end
+
+end
+
+function anti_scanner(user_agents_scanners, waf_mode)
+	local user_agent = ngx.req.get_headers()["user-agent"]
+	if ngx.re.find(user_agent, user_agents_scanners, "ioj") or user_agent == nil or user_agent == "" then
+		if waf_mode == "On" then
+			ngx.log(ngx.ALERT, "\nBlocked request with scanner's user-agent: ", user_agent)
+			ngx.exit(ngx.HTTP_FORBIDDEN)
+		else
+			ngx.log(ngx.ALERT, "\nDetected request with scanner's user-agent: ", user_agent)
+		end
+	end
+
+end
+
+function get_detected_signatures(detected)
 	local result = ""
 	for rule_name, matched in pairs(detected) do
 		result = result .. "	" .. rule_name .. " -> matched: " .. matched .. "\n"
 	end
 	return result
+	
 end
 
-function check_request(rulesets, ip_blacklist, user_agents_blacklist, waf_mode, score_threshold)
-	ngx.req.read_body()
-
-	ddos_mitigation()
-
-	local allowed_methods = {}
-	allowed_methods['GET'] = true
-	allowed_methods['POST'] = true
-	allowed_methods['HEAD'] = true
-	allowed_methods['OPTIONS'] = true
-
-	local method_name = string.upper(ngx.req.get_method())
-	if not allowed_methods[method_name] then
-	    ngx.log(ngx.ALERT, "Blocked request with unallowed method: ", method_name)
-	    ngx.exit(ngx.HTTP_FORBIDDEN)
-	end
-	
-	local client_ip = ngx.var.remote_addr
-	for _, blacklisted_ip in pairs(ip_blacklist) do
-		if client_ip == blacklisted_ip then
-			ngx.log(ngx.ALERT, "\nBlocked request from tor/vpn ip: ", client_ip)
-			ngx.exit(ngx.HTTP_FORBIDDEN)
-		end
-	end
-
-	local user_agent = ngx.req.get_headers()["user-agent"]
-	if ngx.re.find(user_agent, user_agents_blacklist, "ioj") 
-			or user_agent == nil
-			or type(user_agent) ~= "string"
-			or user_agent == ""
-			or ngx.re.find(user_agent, "^PHP", "ioj")
-			or ngx.re.find(user_agent, "^WordPress", "ioj") then
-		ngx.log(ngx.ALERT, "\nBlocked request with unwanted user-agent: ", user_agent)
-		ngx.exit(ngx.HTTP_FORBIDDEN)
-	end
-
+function signature_analysis(rulesets, score_threshold, waf_mode)
     local raw_header = ngx.req.raw_header()
     local body_data = ngx.req.get_body_data()
     local from, to, err  = ngx.re.find(raw_header, "/(.*?) HTTP/")
@@ -133,22 +151,32 @@ function check_request(rulesets, ip_blacklist, user_agents_blacklist, waf_mode, 
 
 	if score ~= 0 then
 		if waf_mode == "On" and score >= score_threshold then		
-			ngx.log(ngx.ALERT, "\nBlocked malicious request with score ", score, " according to the rules:\n", get_detected_rules(detected), "Original args:\n	path: ", path, "\n	body_data: ", body_data, "\n")
+			ngx.log(ngx.ALERT, "\nBlocked malicious request with score ", score, " according to the rules:\n", get_detected_signatures(detected), "Original args:\n	path: ", path, "\n	body_data: ", body_data, "\n")
 			ngx.exit(ngx.HTTP_FORBIDDEN)	
 		else
-			ngx.log(ngx.ALERT, "\nDetected suspicious request with score ", score, " according to the rules:\n", get_detected_rules(detected), "Original args:\n	path: ", path, "\n	body_data: ", body_data, "\n")
+			ngx.log(ngx.ALERT, "\nDetected suspicious request with score ", score, " according to the rules:\n", get_detected_signatures(detected), "Original args:\n	path: ", path, "\n	body_data: ", body_data, "\n")
 		end
 	end
+
+end
+
+function check_request(waf_mode, allowed_methods, torvpn_ip_list, user_agents_scanners, rulesets, score_threshold)
+	ngx.req.read_body()
+
+	check_method(allowed_methods, waf_mode)
+
+	ddos_mitigation(waf_mode)
+	
+	reputation_analysis(torvpn_ip_list, waf_mode)
+	
+	anti_scanner(user_agents_scanners, waf_mode)
+
+	signature_analysis(rulesets, score_threshold, waf_mode)
+
 end
 
 
 local waf = require("waf_init")
-
-if  not ngx.req.is_internal() and waf.waf_mode ~= "Off" and ngx.var.remote_addr ~= ngx.var.server_addr then 
-	local rulesets = waf.rulesets
-	local user_agents_blacklist = waf.user_agents_blacklist
-	local ip_blacklist = waf.ip_blacklist
-	local waf_mode = waf.waf_mode
-	local score_threshold = waf.score_threshold
-	check_request(rulesets, ip_blacklist, user_agents_blacklist, waf_mode, score_threshold)
+if not ngx.req.is_internal() and waf.waf_mode ~= "Off" and ngx.var.remote_addr ~= ngx.var.server_addr then
+	check_request(waf.waf_mode, waf.allowed_methods, waf.torvpn_ip_list, waf.user_agents_scanners, waf.rulesets, waf.score_threshold)
 end
