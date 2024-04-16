@@ -1,4 +1,4 @@
-ip_blacklist = {
+torvpn_ip_list = {
 "103.1.212.107",
 "103.1.212.115",
 "103.1.212.123",
@@ -12241,4 +12241,4 @@ ip_blacklist = {
 "96.27.198.133",
 "96.42.26.63",
 "96.66.15.152"}
-return ip_blacklist
+return torvpn_ip_list
