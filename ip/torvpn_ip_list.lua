@@ -12242,3 +12242,6 @@ torvpn_ip_list = {
 "96.42.26.63",
 "96.66.15.152"}
 return torvpn_ip_list
+
+-- https://github.com/SecOps-Institute/Tor-IP-Addresses/blob/master/tor-exit-nodes.lst
+-- https://github.com/az0/vpn_ip/tree/main/data/input/ip
