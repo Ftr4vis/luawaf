@@ -1,4 +1,10 @@
-# Installation
+# Reverse Proxy WAF for WordPress websites
+## Features
+* Signature analysis,
+* Reputation analysis,
+* Anti-scanner,
+* DoS/DDoS protection.
+## Installation
 1. Create luawaf directory in /usr/local/openresty/ and move all the files there,
 2. Move waf_init.lua to /usr/local/openresty/lualib directory,
 3. Edit the nginx.conf file as per below:
