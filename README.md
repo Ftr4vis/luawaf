@@ -27,7 +27,7 @@ server {
   	}
 }
 ```
-5.
+5. Commit the changes:
 ```
 systemctl restart openresty
 ```
