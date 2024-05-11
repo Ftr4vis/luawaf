@@ -33,5 +33,11 @@ rules_sqli['sql_probing_atmpt_2'] = {regex = "(?:(?:[\\\"'`´’‘]\\s*?\\*.+(?
 
 rules_sqli['postgres_pg_sleep_injection'] = {regex = "(?:(?:select\\s*?pg_sleep)|(?:waitfor\\s*?delay\\s?[\\\"'`´’‘]+\\s?\\d)|(?:;\\s*?shutdown\\s*?(?:;|--|#|\\/\\*|{)))", score = 3}
 rules_sqli['sqli_mongodb'] = {regex = "(?:(?:\\[\\$(?:ne|eq|lte?|gte?|n?in|mod|all|size|exists|type|slice|x?or|div|like|between|and)\\]))", score = 3}
+rules_sqli['sqli_101'] = {regex = "(\\b(m(s(ysaccessobjects|ysaces|ysobjects|ysqueries|ysrelationships|ysaccessstorage|ysaccessxml|ysmodules|ysmodules2|db)|aster\\.\\.sysdatabases|ysql\\.db)\\b|s(ys(\\.database_name|aux)\\b|chema(\\W*\\(|_name\\b)|qlite(_temp)?_master\\b)|d(atabas|b_nam)e\\W*\\(|information_schema\\b|pg_(catalog|toast)\\b|northwind\\b|tempdb\\b))", score = 7}
+rules_sqli['sqli_102'] = {regex = "((procedure\\s+analyse\\s*?\\()|(;\\s*?(declare|open)\\s+[\\w-]+)|(create\\s+(procedure|function)\\s*?\\w+\\s*?\\(\\s*?\\)\\s*?-)|(declare[^\\w]+[@#]\\s*?\\w+)|(exec\\s*?\\(\\s*?@))", score = 7}
+rules_sqli['sqli_103'] = {regex = "xp_(servicecontrol|regread|regwrite|regdeletevalue|regdeletekey|fileexist|enumerrorlogs|readerrorlogs|enumdsn|enumgroups|ntsec_enumdomains)", score = 7}
+rules_sqli['sqli_104'] = {regex = "((/%?\\*(.|\\s){0,50}\\*%?/)(.|\\s){0,50}){3,}", score = 7}
+rules_sqli['sqli_105'] = {regex = "name\\[\\d+.{20,}\\]", score = 7}
+
 
 return rules_sqli
