@@ -32,3 +32,5 @@ server {
 systemctl restart openresty
 ```
 6. (Optional) You can change luawaf settings in waf_init.lua. And don't forget to restart openresty service to apply changes.
+## Rules
+Some of the rules are based on signatures from the project https://github.com/p0pr0ck5/lua-resty-waf/
