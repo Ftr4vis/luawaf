@@ -23,4 +23,6 @@ rules_generic_attacks['coldfusion_injection'] = {regex = "\\bcf(?:usion_(?:d(?:b
 rules_generic_attacks['ldap_injection'] = {regex = "(?:\\((?:\\W*?(?:objectc(?:ategory|lass)|homedirectory|[gu]idnumber|cn)\\b\\W*?=|[^\\w\\x80-\\xFF]*?[\\!\\&\\|][^\\w\\x80-\\xFF]*?\\()|\\)[^\\w\\x80-\\xFF]*?\\([^\\w\\x80-\\xFF]*?[\\!\\&\\|])", score = 5}
 rules_generic_attacks['updf_xss'] = {regex = "http:\\/\\/[\\w\\.]+?\\/.*?\\.pdf\\b[^\\x0d\\x0a]*#", score = 5}
 
+rules_generic_attacks['lfi'] = {regex = "(\\.)+(\\\\|\\/)+(\\.)+(\\\\|\\/)+", score = 5}
+
 return rules_generic_attacks
