@@ -95,4 +95,10 @@ rules_xss['xss_ie_filter_13'] = {regex = "(?:<BASE /+\\t].*?href[ /+\\t]*=)", sc
 rules_xss['xss_ie_filter_14'] = {regex = "(?:<APPLET /+\\t>])", score = 7}
 rules_xss['xss_ie_filter_15'] = {regex = "(?:<OBJECT /+\\t].*?((type)|(codetype)|(classid)|(code)|(data))[ /+\\t]*=)", score = 7}
 rules_xss['xss_73'] = {regex = "\"<!(doctype|entity)", score = 7}
+rules_xss['xss_101'] = {regex = "(^|\\W)alert\\/?(\\.(source|call|apply|bind|valueof))?[\\(\\`\\&\\]]", score = 7}
+rules_xss['xss_102'] = {regex = "on(error|cut|begin|wheel|blur|change|input|reset|select|down|keypress|keyup|paste|copy|toggle)(\\s|\\+)*\\=", score = 7}
+rules_xss['xss_103'] = {regex = "(^|\\W)location\\.(assign|reload|replace|tostring)\\(", score = 7}
+rules_xss['xss_104'] = {regex = "(^|\\W)history(\\.[a-z]+)+\\(", score = 7}
+rules_xss['xss_105'] = {regex = "(^|\\W)(local|session)Storage\\(", score = 7}
+
 return rules_xss
